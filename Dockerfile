@@ -1,11 +1,10 @@
-FROM rust:1 AS build
-WORKDIR /src
-COPY Cargo.toml Cargo.lock ./
+FROM node:22-alpine
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev
 COPY src ./src
-RUN cargo build --release
-
-FROM debian:bookworm-slim
-COPY --from=build /src/target/release/dummyplug /usr/local/bin/dummyplug
-ENV DUMMYPLUG_BIND=0.0.0.0:9998
+ENV DUMMYPLUG_HOST=0.0.0.0
+ENV DUMMYPLUG_PORT=9998
 EXPOSE 9998
-CMD ["dummyplug"]
+USER node
+CMD ["npm", "start"]
