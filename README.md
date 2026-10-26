@@ -2,15 +2,44 @@
 
 A standalone, stateless OpenAI Chat Completions test model for Vizier and other clients. It requires Node.js 22 or later and has no runtime dependencies.
 
+## Clone and test
+
+```sh
+git clone --branch 030-node-dummyplug-server https://github.com/vizier-lab/dummyplug.git
+cd dummyplug
+npm ci
+npm test
+```
+
+Requires Node.js 22 or later. `npm test` runs the server's Node.js test suite.
+
 ## Run locally
 
 ```sh
-npm ci
-npm test
 npm start
 ```
 
-The server binds to `127.0.0.1:9998`. Set `DUMMYPLUG_HOST` or `DUMMYPLUG_PORT` to change the bind address or port. Configure Vizier with `DUMMYPLUG_URL=http://127.0.0.1:9998/v1` (the default), then select provider `dummyplug` and any model string.
+The server binds to `127.0.0.1:9998`. Check that it is running with:
+
+```sh
+curl http://127.0.0.1:9998/healthz
+```
+
+Set `DUMMYPLUG_HOST` or `DUMMYPLUG_PORT` to change the bind address or port.
+
+## Try it with Vizier
+
+Keep dummyplug running in one terminal. In a second terminal, start Vizier from its repository:
+
+```sh
+just run
+```
+
+Open `http://localhost:9999`, create the first account if needed, and create an agent with the
+**dummyplug (testing)** provider and any model name. Vizier's default URL is
+`http://127.0.0.1:9998/v1`, so no API key or extra provider configuration is needed. To use a
+different address, set `DUMMYPLUG_URL` when starting Vizier or save a `base_url` under
+Settings → Providers.
 
 ## Run in a container
 
