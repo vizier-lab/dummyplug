@@ -245,6 +245,12 @@ async fn scenario(
         || id.len() > 128
         || body.steps.len() > 100
         || serde_json::to_vec(&body).map_or(true, |b| b.len() > MAX_BYTES)
+        || body.steps.iter().any(|step| {
+            step.delay_ms.is_some_and(|delay| delay > 300_000)
+                || step
+                    .status
+                    .is_some_and(|status| !(400..=599).contains(&status))
+        })
     {
         return Err(bad("invalid scenario"));
     }
@@ -356,6 +362,14 @@ async fn chat(
     if !exact_tool && let Some(command) = command_text.strip_prefix("DUMMYPLUG ") {
         step = manual(command)?;
     }
+    let mut held = if step.hold {
+        let notifier = release.ok_or_else(|| bad("hold requires X-Dummyplug-Session"))?;
+        let mut notified = Box::pin(notifier.notified_owned());
+        notified.as_mut().enable();
+        Some(notified)
+    } else {
+        None
+    };
     let delay = step.delay_ms.unwrap_or(c.delay_ms);
     if delay > 300_000 {
         return Err(bad("delay exceeds 300000 ms"));
@@ -363,11 +377,8 @@ async fn chat(
     if delay > 0 {
         tokio::time::sleep(Duration::from_millis(delay)).await;
     }
-    if step.hold {
-        release
-            .ok_or_else(|| bad("hold requires X-Dummyplug-Session"))?
-            .notified()
-            .await;
+    if let Some(notified) = held.take() {
+        notified.await;
     }
     let usage = step
         .usage

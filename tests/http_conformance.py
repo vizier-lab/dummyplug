@@ -1,6 +1,8 @@
 """Run against a separate dummyplug process: python3 tests/http_conformance.py."""
 import json
 import os
+import threading
+import time
 import urllib.error
 import urllib.request
 
@@ -81,4 +83,20 @@ records = json.loads(call("/_dummyplug/requests?session_id=A")[1])["requests"]
 assert len(records) == 3 and "Authorization" not in json.dumps(records)
 assert call("/_dummyplug/reset", {"session_id": "A"}, method="POST")[0] == 200
 assert call("/_dummyplug/requests?session_id=A")[0] == 404
+assert call("/_dummyplug/scenarios/held", {"steps": [{"reply": "released", "hold": True, "delay_ms": 300}]}, method="PUT")[0] == 200
+held_result = []
+held_thread = threading.Thread(target=lambda: held_result.append(chat("hello", session="held")), daemon=True)
+held_thread.start()
+for _ in range(100):
+    status, raw, _ = call("/_dummyplug/requests?session_id=held")
+    if status == 200 and json.loads(raw)["requests"]:
+        break
+    time.sleep(0.01)
+else:
+    raise AssertionError("held request was not recorded")
+assert call("/_dummyplug/release/held", {}, method="POST")[0] == 200
+held_thread.join(timeout=2)
+assert not held_thread.is_alive(), "early release did not unblock the request"
+assert json.loads(held_result[0][1])["choices"][0]["message"]["content"] == "released"
+assert call("/_dummyplug/scenarios/invalid", {"steps": [{"failures": 1, "status": 200}]}, method="PUT")[0] == 400
 print("dummyplug HTTP conformance passed")
