@@ -91,3 +91,10 @@ test('pruned lists the pruned tool results the request carried, in order', () =>
   assert.equal(complete(messages, []).content, '2 pruned:\n- c1 h-1 74.3 KB\n- c3 h-3 1.2 MB');
   assert.equal(complete([{ role: 'user', content: ' Pruned ' }], []).content, '(nothing pruned)');
 });
+
+test('sender echoes the frontmatter block of the newest user message', () => {
+  const framed = '---\nmetadata:\n  platform_user_id: \'1\'\nsender: Unregistered User\nverified: false\n\n---\n\nsender';
+  assert.equal(complete([{ role: 'user', content: [{ type: 'text', text: framed }] }], []).content,
+    'metadata:\n  platform_user_id: \'1\'\nsender: Unregistered User\nverified: false');
+  assert.equal(complete([{ role: 'user', content: 'sender' }], []).content, '(no frontmatter)');
+});

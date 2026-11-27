@@ -166,6 +166,19 @@ function contextText(message) {
   return message.content.find((part) => typeof part?.text === 'string' && part.text.startsWith('# Context\n'))?.text ?? '(no context block)';
 }
 
+// §9: the frontmatter of the newest user message, between its `---` lines.
+function senderText(message) {
+  const content = message?.content;
+  const parts = typeof content === 'string' ? [content]
+    : Array.isArray(content)
+      ? content.map((part) => part?.text).filter((text) => typeof text === 'string' && !text.startsWith('# Context\n'))
+      : [];
+  const framed = parts.find((text) => validFrontmatter(text));
+  if (framed === undefined) return '(no frontmatter)';
+  const lines = framed.split(/\r?\n/);
+  return lines.slice(1, lines.indexOf('---', 1)).join('\n').trimEnd();
+}
+
 // Vizier's placeholder for a tool output pruned from the model's view (vizier spec 060).
 const PRUNED = /^\[output pruned \((.+?)\) - use recall_history\("(.+?)"\) to recall\]$/u;
 
@@ -273,6 +286,7 @@ export function complete(messages, toolDefinitions) {
   const text = commandText(userMessage);
   if (text.toLowerCase() === 'tools') return { role: 'assistant', content: toolList(tools) };
   if (text.toLowerCase() === 'context') return { role: 'assistant', content: contextText(userMessage) };
+  if (text.toLowerCase() === 'sender') return { role: 'assistant', content: senderText(userMessage) };
   if (text.toLowerCase() === 'pruned') return { role: 'assistant', content: prunedText(messages) };
   const exactTool = tools.find((tool) => tool.name === text);
   if (exactTool) return { role: 'assistant', content: toolSample(exactTool) };
